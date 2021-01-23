@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% block title %} Welcome Home {{ request.user.username }}{% endblock %}
+{% block style %}
+    .logout-btn{
+    text-decoration: none;
+    color: black;
+    }
+{% endblock %}
+{% block import %}
+{% endblock %}
+{% block content %}
+
+    <div id="app">
+        {% include "navbar.html" %}
+        <div class="container mt-4">
+            <div class="row mb-3">
+                <div class="col-8">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="Book Title ..."
+                               aria-label="Book Title ..."
+                               v-model="search"
+                               aria-describedby="button-addon2">
+                        <button class="btn btn-outline-secondary" type="button" id="button-addon2"
+                                @click="search_title">Search
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button" id="button-addon2"
+                                @click="clear">Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <select class="form-select" aria-label="Default select example"
+                            v-model="order"
+                            @change="change_order">
+                        <option selected>Select Sort Option</option>
+                        <option value="asc">Ascending by Average rating</option>
+                        <option value="desc">Descending by Average rating</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-3 mb-3" v-for="(book, index) in books">
+                    <md-card>
+                        <md-card-media class="d-flex justify-content-center">
+                            <img :src="book.image" alt="People" class="book_image"
+                                 :style="{height:'200px',width: '200px'}">
+                        </md-card-media>
+
+                        <md-card-header :style="{height:'110px'}">
+                            <div class="md-title" :style="{fontSize: '18px'}">[[book.title| truncate(50,'...')]]</div>
+                            <div class="md-subhead d-flex justify-content-between"
+                                 :style="{marginTop:'2px'}">
+                                <span><b>Price:</b> [[book.price]]$</span>
+                                <span>[[book.average_rating]] <md-icon>grade</md-icon></span>
+                            </div>
+                        </md-card-header>
+
+                        <md-card-expand>
+                            <md-card-actions md-alignment="space-between">
+                                <div>
+                                    <md-button @click="add(book)">Add to Cart</md-button>
+                                </div>
+
+                                <md-card-expand-trigger>
+                                    <md-button class="md-icon-button">
+                                        <md-icon>keyboard_arrow_down</md-icon>
+                                    </md-button>
+                                </md-card-expand-trigger>
+                            </md-card-actions>
+
+                            <md-card-expand-content>
+                                <md-card-content>
+                                    <div class="row">
+                                        <div class="col">Language</div>
+                                        <div class="col">[[book.language_code]]</div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col">Author</div>
+                                        <div class="col">[[book.authors]]</div>
+                                    </div>
+                                </md-card-content>
+                            </md-card-expand-content>
+                        </md-card-expand>
+                    </md-card>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-8"></div>
+                <div class="col-4 d-flex">
+                    <md-bottom-bar md-sync-route>
+                        <md-bottom-bar-item exact md-label="previous"
+                                            md-icon="keyboard_arrow_left"
+                                            @click="change_page('previous')"
+                                            :md-disabled="!previous"></md-bottom-bar-item>
+                        <md-bottom-bar-item exact md-label="current"
+                        >
+                            [[current_page]]/[[total_pages]]
+                        </md-bottom-bar-item>
+                        <md-bottom-bar-item>
+                            <md-field class="w-25 m-0">
+                                <label for="movie">Page Size</label>
+                                <md-select v-model="page_size" name="page_size"
+                                           id="page_size"
+                                           @md-selected="change_page_size">
+                                    <md-option value="5">5</md-option>
+                                    <md-option value="10">10</md-option>
+                                    <md-option value="15">15</md-option>
+                                    <md-option value="20">20</md-option>
+                                </md-select>
+                            </md-field>
+                        </md-bottom-bar-item>
+                        <md-bottom-bar-item md-label="next"
+                                            md-icon="keyboard_arrow_right"
+                                            @click="change_page('next')"
+                                            :md-disabled="!next"></md-bottom-bar-item>
+                    </md-bottom-bar>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block script %}
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue-material"></script>
+    <script>
+        var filter = function (text, length, clamp) {
+            clamp = clamp || '...';
+            var node = document.createElement('div');
+            node.innerHTML = text;
+            var content = node.textContent;
+            return content.length > length ? content.slice(0, length) + clamp : content;
+        };
+
+        Vue.filter('truncate', filter);
+        Vue.use(VueMaterial.default)
+
+        var app = new Vue({
+            el: '#app',
+            data: {
+                cart: {},
+                username: "{{ request.user.username }}",
+                books: [],
+                current_page: 1,
+                total_pages: null,
+                next: null,
+                previous: null,
+                count: null,
+                page_size: 20,
+                search: null,
+                showCart: false,
+                cart_items: [],
+                order: "asc"
+            },
+            delimiters: ['[[', ']]'],
+            mounted() {
+                let params = {
+                    order: this.order
+                };
+                fetch(`/books/?${new URLSearchParams(params).toString()}`, {
+                    method: "GET"
+                }).then(res => res.json()).then(data => {
+                    let {next, previous, count, pages} = data;
+                    this.books = data.results;
+                    this.current_page = data.current;
+                    this.next = next;
+                    this.previous = previous;
+                    this.count = count;
+                    this.total_pages = pages;
+                })
+            },
+            methods: {
+                change_page(type) {
+                    let page_count, params = {};
+                    params = {
+                        page_size: this.page_size,
+                        order: this.order
+                    };
+                    if (this.search) {
+                        params.search = this.search;
+                    }
+                    if (type === "next") {
+                        page_count = this.current_page + 1;
+                    } else {
+                        page_count = this.current_page - 1;
+                    }
+                    params.page = page_count;
+                    const param_string = new URLSearchParams(params).toString();
+                    fetch(`/books/?${param_string}`).then(res => res.json()).then(data => {
+                        let {next, previous, count, pages} = data;
+                        this.books = data.results;
+                        this.current_page = data.current;
+                        this.next = next;
+                        this.previous = previous;
+                        this.count = count;
+                        this.total_pages = pages;
+                    })
+                },
+                change_page_size() {
+                    let params = {};
+                    params = {
+                        page_size: this.page_size,
+                        order: this.order
+                    };
+                    if (this.search) {
+                        params.search = this.search;
+                    }
+                    const param_string = new URLSearchParams(params).toString();
+                    fetch(`/books/?${param_string}`).then(res => res.json()).then(data => {
+                        let {next, previous, count, pages} = data;
+                        this.books = data.results;
+                        this.current_page = data.current;
+                        this.next = next;
+                        this.previous = previous;
+                        this.count = count;
+                        this.total_pages = pages;
+                    })
+                },
+                search_title() {
+                    let params = {};
+                    if (this.search) {
+                        params = {
+                            search: this.search,
+                        };
+                    }
+                    params.order = this.order;
+                    const param_string = new URLSearchParams(params).toString();
+                    fetch(`/books/?${param_string}`).then(res => res.json()).then(data => {
+                        let {next, previous, count, pages} = data;
+                        this.books = data.results;
+                        this.current_page = data.current;
+                        this.next = next;
+                        this.previous = previous;
+                        this.count = count;
+                        this.total_pages = pages;
+                    })
+                },
+                clear() {
+                    this.search = null;
+                    this.search_title();
+                },
+                add(book) {
+                    if (this.cart[book.bookID]) {
+                        this.cart[book.bookID].quantity++;
+                    } else {
+                        this.cart[book.bookID] = {...book, quantity: 1};
+                    }
+                    this.cart_items = Object.keys(this.cart).map(v => this.cart[v]);
+                },
+                remove(book) {
+                    if (this.cart[book.bookID] && this.cart[book.bookID].quantity > 1) {
+                        this.cart[book.bookID].quantity--;
+                    } else {
+                        this.cart = _.omit(this.cart, [book.bookID,]);
+                    }
+                    this.cart_items = Object.keys(this.cart).map(v => this.cart[v]);
+                },
+                change_order() {
+                    let params = {};
+                    if (this.search) {
+                        params = {
+                            search: this.search,
+                        };
+                    }
+                    params = {
+                        ...params,
+                        page_size: this.page_size,
+                        page: this.current_page,
+                        order: this.order
+                    };
+                    const param_string = new URLSearchParams(params).toString();
+                    fetch(`/books/?${param_string}`).then(res => res.json()).then(data => {
+                        let {next, previous, count, pages} = data;
+                        this.books = data.results;
+                        this.current_page = data.current;
+                        this.next = next;
+                        this.previous = previous;
+                        this.count = count;
+                        this.total_pages = pages;
+                    })
+                }
+            },
+        })
+    </script>
+{% endblock %}

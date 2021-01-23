@@ -1,0 +1,54 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">E-Commerce Book Store</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            </ul>
+            <form class="d-flex me-2 w-50 justify-content-end">
+                <md-menu md-size="auto" :md-active.sync="showCart">
+                    <md-badge :md-content="cart_items.length">
+                        <md-button class="md-icon-button" md-menu-trigger>
+                            <md-icon>shopping_cart</md-icon>
+                        </md-button>
+                    </md-badge>
+
+                    <md-menu-content>
+                        <div v-if="cart_items.length>0">
+                            <md-list class="md-triple-line">
+                                <md-list-item v-for="book in cart_items">
+
+                                    <div class="md-list-item-text">
+                                        <span>[[book.title]]</span>
+                                        <span>Price: [[book.price]] </span>
+                                        <p>quantity: [[book.quantity]]
+                                        </p>
+                                    </div>
+
+                                    <md-button class="md-icon-button md-list-action"
+                                               @click="remove(book)">
+                                        <md-icon class="md-primary"
+                                        >remove_circle
+                                        </md-icon>
+                                    </md-button>
+                                </md-list-item>
+                                <md-list-item>
+                                    <button class="btn btn-primary">checkout</button>
+                                </md-list-item>
+                            </md-list>
+                        </div>
+                    </md-menu-content>
+                </md-menu>
+            </form>
+            <form class="d-flex">
+                <button class="btn btn-warning">
+                    <a class="logout-btn" href="/logout/">Logout</a>
+                </button>
+            </form>
+
+        </div>
+    </div>
+</nav>
