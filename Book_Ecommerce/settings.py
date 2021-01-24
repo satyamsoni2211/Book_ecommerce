@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).parent.parent
 SECRET_KEY = '7tb@kv1kwrwcxdzur!j78=a5)))&!y6)h8&d#_vj&ucynb!gnq'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
+DEBUG = True
 
 ALLOWED_HOSTS = ["*", ]
 
@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'authentication',
     'corsheaders',
     'payments',
+    'mathfilters'
 ]
 
 MIDDLEWARE = [
