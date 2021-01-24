@@ -11,6 +11,7 @@
 {% block content %}
 
     <div id="app">
+        {% csrf_token %}
         {% include "navbar.html" %}
         <div class="container mt-4">
             <div class="row mb-3">
@@ -117,6 +118,11 @@
                 </div>
             </div>
         </div>
+        <md-snackbar :md-position="position" :md-duration="isInfinity ? Infinity : duration"
+                     :md-active.sync="showSnackbar" md-persistent>
+            <span>[[ message ]]</span>
+            <md-button class="md-primary" @click="showSnackbar = false">Close</md-button>
+        </md-snackbar>
     </div>
 {% endblock %}
 {% block script %}
@@ -150,10 +156,18 @@
                 search: null,
                 showCart: false,
                 cart_items: [],
-                order: "asc"
+                order: "asc",
+                cart_res: null,
+                csrf_token: null,
+                showSnackbar: false,
+                position: 'center',
+                duration: 4000,
+                isInfinity: false,
+                message: null
             },
             delimiters: ['[[', ']]'],
             mounted() {
+                this.csrf_token = document.getElementsByName("csrfmiddlewaretoken")[0].defaultValue
                 let params = {
                     order: this.order
                 };
@@ -168,6 +182,31 @@
                     this.count = count;
                     this.total_pages = pages;
                 })
+                let cart_id = window.localStorage.getItem("cart_id")
+                if (cart_id) {
+                    fetch(`/cart/?cart_id=${cart_id}`).then(res => {
+                        if (res.ok) {
+                            return res.json()
+                        } else {
+                            throw Error("failed to fetch cart")
+                        }
+                    }).then(data => {
+                        if (!data.is_checked_out) {
+                            this.cart_res = data;
+                            this.cart_items = this.cart_res.box.map(({book, quantity}) => {
+                                return {
+                                    ...book,
+                                    quantity
+                                }
+                            });
+                        } else {
+                            window.localStorage.removeItem("cart_id");
+                        }
+                    }).catch(err => {
+                        this.toggleSnackbar(err.toString())
+                        window.localStorage.removeItem("cart_id");
+                    })
+                }
             },
             methods: {
                 change_page(type) {
@@ -240,20 +279,96 @@
                     this.search_title();
                 },
                 add(book) {
+                    let method = "PUT";
                     if (this.cart[book.bookID]) {
                         this.cart[book.bookID].quantity++;
                     } else {
                         this.cart[book.bookID] = {...book, quantity: 1};
+                        method = "POST";
                     }
                     this.cart_items = Object.keys(this.cart).map(v => this.cart[v]);
+                    let data = {
+                        books: Object.keys(this.cart).map(v => {
+                            const {bookID, quantity} = this.cart[v];
+                            return {id: bookID, quantity}
+                        })
+                    }
+                    if (method === "PUT") {
+                        data = {
+                            ...data,
+                            cart_id: this.cart_res["cart_id"]
+                        }
+                    }
+                    fetch("/cart/", {
+                        method,
+                        body: `${JSON.stringify(data)}`,
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': this.csrf_token
+                        },
+                    }).then(res => res.json()).then(data => {
+                        this.cart_res = data;
+                        window.localStorage.setItem("cart_id", this.cart_res.cart_id);
+                        this.toggleSnackbar("item added successfully !");
+
+                    })
                 },
                 remove(book) {
+                    let method = "PUT";
                     if (this.cart[book.bookID] && this.cart[book.bookID].quantity > 1) {
                         this.cart[book.bookID].quantity--;
                     } else {
                         this.cart = _.omit(this.cart, [book.bookID,]);
                     }
                     this.cart_items = Object.keys(this.cart).map(v => this.cart[v]);
+                    if (this.cart_items.length > 0) {
+                        let data = {
+                            books: Object.keys(this.cart).map(v => {
+                                const {bookID, quantity} = this.cart[v];
+                                return {id: bookID, quantity}
+                            }),
+                            cart_id: this.cart_res["cart_id"]
+                        }
+                        fetch("/cart/", {
+                            method,
+                            body: `${JSON.stringify(data)}`,
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': this.csrf_token
+                            },
+                        }).then(res => res.json()).then(data => {
+                            this.cart_res = data;
+                            window.localStorage.setItem("cart_id", this.cart_res.cart_id);
+                            this.toggleSnackbar("item removed successfully !");
+                        })
+                    } else {
+                        fetch(`/cart/?cart_id=${this.cart_res['cart_id']}`, {
+                            method: "DELETE",
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': this.csrf_token
+                            },
+                        }).then(res => {
+                            if (res.ok) {
+                                return res
+                            } else {
+                                throw Error(response.statusText);
+                            }
+                        }).then(data => {
+                            this.cart_res = {};
+                            window.localStorage.removeItem("cart_id");
+                            this.toggleSnackbar("Cart deleted successfully !");
+                        }).catch(err => {
+                            this.toggleSnackbar(err.toString());
+                        })
+                    }
+                },
+                toggleSnackbar(message) {
+                    this.message = message;
+                    this.showSnackbar = true;
                 },
                 change_order() {
                     let params = {};
@@ -278,6 +393,10 @@
                         this.count = count;
                         this.total_pages = pages;
                     })
+                },
+                checkout() {
+                    let url = new URL(document.baseURI);
+                    document.location = `${url.origin}/checkout/${this.cart_res["cart_id"]}/`
                 }
             },
         })

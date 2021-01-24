@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).parent.parent
 SECRET_KEY = '7tb@kv1kwrwcxdzur!j78=a5)))&!y6)h8&d#_vj&ucynb!gnq'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*", ]
 
 # Application definition
 
@@ -36,14 +36,19 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     'rest_framework',
     'inventory',
-    'authentication'
+    'authentication',
+    'corsheaders',
+    'payments',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -139,7 +144,6 @@ AUTH_USER_MODEL = "authentication.User"
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
@@ -151,3 +155,13 @@ REST_FRAMEWORK = {
 LOGIN_URL = "/"
 LOGIN_REDIRECT_URL = "/home/"
 LOGOUT_REDIRECT_URL = "/"
+
+API_KEY = "test_c2d85cc0d6d85d8a9397b664f22"
+AUTH_TOKEN = "test_1e55bf9f39ebebd7d5b54e62af3"
+SALT = "a88ade6209ee4163aab52e52b8224475"
+
+CORS_ALLOWED_ORIGINS = ["https://test.instamojo.com", ]
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = (BASE_DIR / "static",)

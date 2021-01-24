@@ -39,7 +39,7 @@ class ListBookView(ListAPIView):
         return queryset
 
 
-class CreateCartView(CreateAPIView, RetrieveAPIView, UpdateAPIView):
+class CreateCartView(CreateAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView):
     serializer_class = CartSerializer
     parser_classes = [JSONParser, ]
     validator_serializer = CreateApiDataSerializer
@@ -79,7 +79,9 @@ class CreateCartView(CreateAPIView, RetrieveAPIView, UpdateAPIView):
         serializer.is_valid(raise_exception=True)
         boxes = []
         for i in serializer.data.get("books"):
-            boxes.append(CartBox.objects.create(book=Book.objects.get(pk=i.get("id")), quantity=i.get("quantity")))
+            box, created = CartBox.objects.get_or_create(book=Book.objects.get(pk=i.get("id")),
+                                                         quantity=i.get("quantity"))
+            boxes.append(box)
         if not partial:
             instance.box.set(boxes, clear=True)
         else:
@@ -96,12 +98,16 @@ class CreateCartView(CreateAPIView, RetrieveAPIView, UpdateAPIView):
 
         return self.update(request, *args, partial=True, **kwargs)
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
+
+@api_view(["DELETE", ])
 @authentication_classes([IsAuthenticated, ])
-@api_view(["PATCH", ])
-@parser_classes([JSONParser, ])
 def discard(request: Request):
-    cart_id = request.data.get("cart_id")
+    cart_id = request.QUERY_PARAMS.get("cart_id")
     if not cart_id:
         raise APIException("Cart Id not provided")
     try:

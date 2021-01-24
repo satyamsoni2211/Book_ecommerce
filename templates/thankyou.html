@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Thank You{% endblock %}
+{% block content %}
+    {% include "base_nav.html" %}
+    {% if success %}
+        <div class="container mb-5">
+        <div class="row justify-content-center">
+            <p class="fs-1">Thanks for shopping!</p>
+        </div>
+        <div class="row w-100 justify-content-center fs-2">Order Details</div>
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Title</th>
+                <th scope="col">Price</th>
+                <th scope="col">Quantity</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for box in order.cart.box.all %}
+                <tr>
+                    <th scope="row">{{ forloop.counter }}</th>
+                    <td>{{ box.book.title }}</td>
+                    <td>{{ box.book.price }}</td>
+                    <td>{{ box.quantity }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div class="row">
+            <div class="col-6">
+                <table class="table">
+                    <tbody>
+                    <tr>
+                        <td>Order Id</td>
+                        <td>{{ order.order_id }}</td>
+                    </tr>
+                    <tr>
+                        <td>Status</td>
+                        <td>{{ order.status }}</td>
+                    </tr>
+                    <tr>
+                        <td>Completed at</td>
+                        <td>{{ order.completed_at }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="row justify-content-center">
+            <p class="fs-1">Oops, payment failed !</p>
+        </div>
+        <div class="row">
+            <div class="col-2"></div>
+            <div class="col-8">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Title</th>
+                        <th scope="col">Price</th>
+                        <th scope="col">Quantity</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for box in order.cart.box.all %}
+                        <tr>
+                            <th scope="row">{{ forloop.counter }}</th>
+                            <td>{{ box.book.title }}</td>
+                            <td>{{ box.book.price }}</td>
+                            <td>{{ box.quantity }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-2"></div>
+        </div>
+        <div class="row">
+            <div class="col-8 offset-2">
+                <p>Do you want to retry ?</p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-3 offset-2">
+                <button class="btn btn-warning">
+                    <a href="/checkout/{{ order.cart.cart_id }}/">Checkout</a>
+                </button>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
